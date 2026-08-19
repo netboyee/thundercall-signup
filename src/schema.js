@@ -2,6 +2,7 @@ export const schemas = {
     postBody : {
         "externalId": "",
         "accountId": 0,
+        "companyId": 0,
         "firstName": "",
         "lastName": "",
         "title": "",
@@ -39,6 +40,7 @@ export const schemas = {
                     ]
                 }
             }
-        ]
+        ],
+        "locationIds": []
     }
 }
