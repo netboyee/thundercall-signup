@@ -386,18 +386,18 @@ const Signup = () => {
                             </Form.Group>
                     </Row>
                         {globals.TURNSTILE_SITE_KEY !== "" && (
-                            <Row className="mb-3">
-                                <Col>
-                                    <div
-                                        className="cf-turnstile"
-                                        data-sitekey={globals.TURNSTILE_SITE_KEY}
-                                        data-theme="light"
-                                    />
-                                </Col>
-                            </Row>
-                        )}
-                        <div>
-                            <Button className={isLoading.buttonClasses} variant="primary" type="button" onClick={onSubmit}>
+                        <Row className="mt-4 mb-3 justify-content-center">
+                            <Col xs="auto">
+                                <div
+                                    className="cf-turnstile"
+                                    data-sitekey={globals.TURNSTILE_SITE_KEY}
+                                    data-theme="light"
+                                />
+                            </Col>
+                        </Row>
+                            )}
+                            <div className="text-center">
+                                <Button className={isLoading.buttonClasses} variant="primary" type="button" onClick={onSubmit}>
                                 <Spinner as="span" animation="border" size="sm" role="status" aria-hidden="true" style={{display:isLoading.spinnerDisplay}}>
                                 </Spinner>
                                 Submit</Button>
