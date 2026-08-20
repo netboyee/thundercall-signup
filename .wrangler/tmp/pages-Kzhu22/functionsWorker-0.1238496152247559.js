@@ -1075,7 +1075,7 @@ function jsonResponse(status, payload) {
 }
 __name(jsonResponse, "jsonResponse");
 
-// ../.wrangler/tmp/pages-fCeLYu/functionsRoutes-0.26297095763689327.mjs
+// ../.wrangler/tmp/pages-Kzhu22/functionsRoutes-0.6916652349248187.mjs
 var routes = [
   {
     routePath: "/api/signup",

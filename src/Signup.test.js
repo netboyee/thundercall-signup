@@ -1,4 +1,4 @@
-import {resolveSubmissionOutcome, extractErrorMessage, buildThunderCallRequest, buildLegacyRequest, readTurnstileToken} from './Signup';
+import {resolveSubmissionOutcome, extractErrorMessage, buildThunderCallPayload, buildThunderCallRequest, buildLegacyRequest, readTurnstileToken} from './Signup';
 
 describe('resolveSubmissionOutcome', () => {
     test('treats legacy success as a successful submission even if the new api fails', () => {
@@ -41,6 +41,54 @@ describe('extractErrorMessage', () => {
 });
 
 describe('request builders', () => {
+    test('maps the legacy signup shape into the slim ThunderCall api payload', () => {
+        const payload = {
+            externalId: 'RD1234567',
+            accountId: 2,
+            firstName: 'Ernie',
+            lastName: 'Lyon',
+            title: '',
+            emails: [{emailAddress: 'ernie@example.com', emailType: 'Home'}],
+            phones: [{phoneNumber: '4073530340', extension: '', phoneType: 'Home'}],
+            addresses: [{
+                address: '4368 Berry Oak Dr',
+                address2: '',
+                city: 'Apopka',
+                stateProvince: 'FL',
+                zipPostalCode: '32712',
+                country: 'US',
+                addressType: 'Home',
+                thundercall: {
+                    phoneSetting: {
+                        name: 'Home',
+                        phoneType: 'Home',
+                        email: 0,
+                        enableText: false
+                    },
+                    warningTypes: [0, 2]
+                }
+            }]
+        };
+
+        expect(buildThunderCallPayload(payload)).toEqual({
+            externalId: 'RD1234567',
+            accountId: 2,
+            firstName: 'Ernie',
+            lastName: 'Lyon',
+            title: '',
+            emailAddress: 'ernie@example.com',
+            phoneNumber: '4073530340',
+            address: {
+                line1: '4368 Berry Oak Dr',
+                line2: '',
+                city: 'Apopka',
+                stateCode: 'FL',
+                postalCode: '32712'
+            },
+            warningTypes: [0, 2]
+        });
+    });
+
     test('sends the new api submission through the Cloudflare proxy endpoint', () => {
         const payload = {accountId: 2, firstName: 'Ernie'};
         const request = buildThunderCallRequest(payload, 'turnstile-token');

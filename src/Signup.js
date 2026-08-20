@@ -52,6 +52,28 @@ export const buildThunderCallRequest = (payload, turnstileToken) => ({
     })
 });
 
+export const buildThunderCallPayload = (legacyPayload) => {
+    const address = legacyPayload?.addresses?.[0] || {};
+
+    return {
+        externalId: legacyPayload?.externalId || "",
+        accountId: legacyPayload?.accountId || 0,
+        firstName: legacyPayload?.firstName || "",
+        lastName: legacyPayload?.lastName || "",
+        title: legacyPayload?.title || "",
+        emailAddress: legacyPayload?.emails?.[0]?.emailAddress || "",
+        phoneNumber: legacyPayload?.phones?.[0]?.phoneNumber || "",
+        address: {
+            line1: address.address || "",
+            line2: address.address2 || "",
+            city: address.city || "",
+            stateCode: address.stateProvince || "",
+            postalCode: address.zipPostalCode || ""
+        },
+        warningTypes: address?.thundercall?.warningTypes || []
+    };
+}
+
 export const buildLegacyRequest = (payload) => ({
     method: 'post',
     url: `${globals.LEGACY_API_BASE_URL}/api/products/${globals.LEGACY_API_PRODUCT_ID}/records`,
@@ -197,9 +219,10 @@ const Signup = () => {
         }
         else 
         {
+            const thunderCallPayload = buildThunderCallPayload(payload);
             const [legacyResult, thunderCallResult] = await Promise.allSettled([
                 axios(buildLegacyRequest(payload)),
-                axios(buildThunderCallRequest(payload, turnstileToken))
+                axios(buildThunderCallRequest(thunderCallPayload, turnstileToken))
             ]);
 
             const outcome = resolveSubmissionOutcome(legacyResult, thunderCallResult);
