@@ -1,0 +1,21 @@
+{
+  "routes": [
+    {
+      "routePath": "/api/signup",
+      "mountPath": "/api",
+      "method": "OPTIONS",
+      "module": [
+        "api/signup.js:onRequestOptions"
+      ]
+    },
+    {
+      "routePath": "/api/signup",
+      "mountPath": "/api",
+      "method": "POST",
+      "module": [
+        "api/signup.js:onRequestPost"
+      ]
+    }
+  ],
+  "baseURL": "/"
+}

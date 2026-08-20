@@ -1,4 +1,4 @@
-import React, {useRef, useState} from 'react';
+import React, {useEffect, useRef, useState} from 'react';
 import {Form, Button, Col, Row, Spinner} from 'react-bootstrap';
 import {globals} from './globals';
 import {schemas} from './schema';
@@ -18,12 +18,24 @@ export const readTurnstileToken = () => {
     return typeof value === 'string' ? value.trim() : "";
 }
 
-export const resetTurnstileWidget = () => {
+export const resetTurnstileWidget = (widgetId) => {
     if (typeof window === 'undefined') {
         return;
     }
+
+    if (widgetId === null || widgetId === undefined) {
+        return;
+    }
+
     if (window.turnstile && typeof window.turnstile.reset === 'function') {
-        window.turnstile.reset();
+        try {
+            const reset = window.turnstile.reset(widgetId);
+            if (reset && typeof reset.catch === 'function') {
+                reset.catch(() => {});
+            }
+        } catch (_error) {
+            // The widget can be removed while an in-flight submission finishes.
+        }
     }
 }
 
@@ -121,6 +133,8 @@ export const isSignupFormReady = ({firstName, lastName, emailAddress, phoneNumbe
 }
 
 const Signup = () => {
+    const turnstileContainerRef = useRef(null);
+    const turnstileWidgetIdRef = useRef(null);
 
     const generateRandomId = () => 
     {
@@ -149,6 +163,34 @@ const Signup = () => {
     const [defDisplay, setDefaultDisplay] = useState({defaultDisplay: 'block', submissionDisplay: 'none'})
     const [isSubmitting, setIsSubmitting] = useState(false);
     const submitLockRef = useRef(false);
+
+    useEffect(() => {
+        if (globals.TURNSTILE_SITE_KEY === "") {
+            return undefined;
+        }
+
+        let cancelled = false;
+        const renderTurnstile = () => {
+            if (cancelled || turnstileWidgetIdRef.current !== null || !turnstileContainerRef.current) {
+                return;
+            }
+
+            if (window.turnstile && typeof window.turnstile.render === 'function') {
+                turnstileWidgetIdRef.current = window.turnstile.render(turnstileContainerRef.current, {
+                    sitekey: globals.TURNSTILE_SITE_KEY,
+                    theme: 'light'
+                });
+            }
+        };
+
+        renderTurnstile();
+        const interval = window.setInterval(renderTurnstile, 50);
+
+        return () => {
+            cancelled = true;
+            window.clearInterval(interval);
+        };
+    }, []);
 
     const accountId = Number.parseInt(process.env.REACT_APP_ACCOUNT_ID || "0", 10);
     const companyId = Number.parseInt(process.env.REACT_APP_COMPANYID || "0", 10);
@@ -276,7 +318,7 @@ const Signup = () => {
             ]);
 
             const outcome = resolveSubmissionOutcome(legacyResult, thunderCallResult);
-            resetTurnstileWidget();
+            resetTurnstileWidget(turnstileWidgetIdRef.current);
 
             if (outcome.succeeded)
             {
@@ -421,11 +463,7 @@ const Signup = () => {
                         {globals.TURNSTILE_SITE_KEY !== "" && (
                         <Row className="mt-4 mb-3 justify-content-center">
                             <Col xs="auto">
-                                <div
-                                    className="cf-turnstile"
-                                    data-sitekey={globals.TURNSTILE_SITE_KEY}
-                                    data-theme="light"
-                                />
+                                <div ref={turnstileContainerRef} />
                             </Col>
                         </Row>
                             )}
