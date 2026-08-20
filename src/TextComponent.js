@@ -3,6 +3,7 @@ import {Form, Col} from 'react-bootstrap';
 
 const TextComponent = (props) => {
     const [inputValue, setInput] = useState("");
+    const controlId = props.controlId || `signup-${String(props.name || "field").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "")}`;
 
     const updateInput = (e) => {
         setInput(e.target.value);
@@ -13,7 +14,7 @@ const TextComponent = (props) => {
     }, [inputValue]);
 
     return (
-        <Form.Group as={Col} className="labels" md={props.medium} sm={props.small}>
+        <Form.Group as={Col} className="labels" md={props.medium} sm={props.small} controlId={controlId}>
             <Form.Label>{props.name}</Form.Label>
             <Form.Control type={props.type} value={inputValue} 
                 onChange={updateInput}>

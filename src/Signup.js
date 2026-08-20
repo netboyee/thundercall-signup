@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, {useRef, useState} from 'react';
 import {Form, Button, Col, Row, Spinner} from 'react-bootstrap';
 import {globals} from './globals';
 import {schemas} from './schema';
@@ -86,6 +86,40 @@ export const buildLegacyRequest = (payload) => ({
     data: JSON.stringify(payload)
 });
 
+const trimValue = (value) => typeof value === 'string' ? value.trim() : "";
+
+export const buildSelectedWarningTypes = ({torStatus, severeStatus, winStatus, flashStatus}) => {
+    const warningTypes = [];
+
+    if (torStatus) {
+        warningTypes.push(0);
+    }
+    if (severeStatus) {
+        warningTypes.push(2);
+    }
+    if (winStatus) {
+        warningTypes.push(3);
+    }
+    if (flashStatus) {
+        warningTypes.push(1);
+    }
+
+    return warningTypes;
+}
+
+export const isSignupFormReady = ({firstName, lastName, emailAddress, phoneNumber, address, city, zip, usState, warningTypes}) => {
+    return trimValue(firstName) !== "" &&
+        trimValue(lastName) !== "" &&
+        trimValue(emailAddress) !== "" &&
+        trimValue(phoneNumber) !== "" &&
+        trimValue(address) !== "" &&
+        trimValue(city) !== "" &&
+        trimValue(zip) !== "" &&
+        trimValue(usState) !== "" &&
+        Array.isArray(warningTypes) &&
+        warningTypes.length > 0;
+}
+
 const Signup = () => {
 
     const generateRandomId = () => 
@@ -113,11 +147,26 @@ const Signup = () => {
     const [city, setCity] = useState("");
     const [zip, setZip] = useState("");
     const [defDisplay, setDefaultDisplay] = useState({defaultDisplay: 'block', submissionDisplay: 'none'})
-    const [isLoading, setIsLoading] = useState({spinnerDisplay: 'none', buttonClasses: 'sbbtn'});
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const submitLockRef = useRef(false);
 
     const accountId = Number.parseInt(process.env.REACT_APP_ACCOUNT_ID || "0", 10);
     const companyId = Number.parseInt(process.env.REACT_APP_COMPANYID || "0", 10);
     const locationId = Number.parseInt(process.env.REACT_APP_LOCATION || "0", 10);
+    const warningTypes = buildSelectedWarningTypes({torStatus, severeStatus, winStatus, flashStatus});
+    const submitDisabled = isSubmitting || !isSignupFormReady({
+        firstName,
+        lastName,
+        emailAddress,
+        phoneNumber,
+        address,
+        city,
+        zip,
+        usState,
+        warningTypes
+    });
+    const buttonClasses = submitDisabled ? 'sbbtn disabled' : 'sbbtn';
+    const spinnerDisplay = isSubmitting ? 'inline-block' : 'none';
 
     const updateDefaultDisplay = () => {
         setDefaultDisplay(defDisplay => defDisplay = {
@@ -178,7 +227,7 @@ const Signup = () => {
         setFlashStatus(flashStatus => flashStatus = !flashStatus);
     }
 
-    const setPostBody = (nextExternalId) => {
+    const setPostBody = (nextExternalId, selectedWarningTypes) => {
         schemas.postBody.addresses[0].stateProvince = usState;
         schemas.postBody.locationIds = locationId > 0 ? [locationId] : [];
         schemas.postBody.phones[0].phoneNumber = phoneNumber;
@@ -192,32 +241,33 @@ const Signup = () => {
         schemas.postBody.accountId = accountId;
         schemas.postBody.companyId = companyId;
         schemas.postBody.tcall = true;
-        schemas.postBody.addresses[0].thundercall.warningTypes = [];
-        warnings('tor');
-        warnings('severe');
-        warnings('winterstorm');
-        warnings('ff');
+        schemas.postBody.addresses[0].thundercall.warningTypes = [...selectedWarningTypes];
 
         return JSON.parse(JSON.stringify(schemas.postBody));
     }
 
     const onSubmit = async () => {
-        setIsLoading(isLoading => isLoading = {
-            spinnerDisplay: 'inline-block',
-            buttonClasses: 'sbbtn disabled'
-        });
+        if (submitLockRef.current || submitDisabled)
+        {
+            return;
+        }
+
+        submitLockRef.current = true;
+        setIsSubmitting(true);
+        setColor('none');
+        setError("");
+        setDisplay('none');
+
         const nextExternalId = updateExternalId();
-        const payload = setPostBody(nextExternalId);
+        const payload = setPostBody(nextExternalId, warningTypes);
         const turnstileToken = readTurnstileToken();
         if(!validation(payload))
         {
-            setIsLoading(isLoading => isLoading = {
-                spinnerDisplay: 'none',
-                buttonClasses: 'sbbtn'
-            });
+            submitLockRef.current = false;
+            setIsSubmitting(false);
             return;
         }
-        else 
+        try
         {
             const thunderCallPayload = buildThunderCallPayload(payload);
             const [legacyResult, thunderCallResult] = await Promise.allSettled([
@@ -256,10 +306,11 @@ const Signup = () => {
             {
                 setValidationState(message);
             }
-            setIsLoading(isLoading => isLoading = {
-                spinnerDisplay: 'none',
-                buttonClasses: 'sbbtn'
-            });
+        }
+        finally
+        {
+            submitLockRef.current = false;
+            setIsSubmitting(false);
         }
     }
 
@@ -270,42 +321,42 @@ const Signup = () => {
     }
 
     const validation = (payload) => {
-        if(payload.firstName === "")
+        if(trimValue(payload.firstName) === "")
         {
             setValidationState("First name required");
             return false;
         }
-        if(payload.lastName === "")
+        if(trimValue(payload.lastName) === "")
         {
             setValidationState("Last name required");
             return false;
         }
-        if(payload.emails[0].emailAddress === "")
+        if(trimValue(payload.emails[0].emailAddress) === "")
         {
             setValidationState("Email address required");
             return false;
         }
-        if(payload.phones[0].phoneNumber === "")
+        if(trimValue(payload.phones[0].phoneNumber) === "")
         {
             setValidationState("Phone number required");
             return false;
         }
-        if(payload.addresses[0].city === "")
+        if(trimValue(payload.addresses[0].city) === "")
         {
             setValidationState("City required");
             return false;
         }
-        if(payload.addresses[0].address === "")
+        if(trimValue(payload.addresses[0].address) === "")
         {
             setValidationState("Address required");
             return false;
         }
-        if(payload.addresses[0].stateProvince === "")
+        if(trimValue(payload.addresses[0].stateProvince) === "")
         {
             setValidationState("State Required");
             return false;
         }
-        if(payload.addresses[0].zipPostalCode === "")
+        if(trimValue(payload.addresses[0].zipPostalCode) === "")
         {
             setValidationState("Zip Code Required");
             return false;
@@ -322,47 +373,6 @@ const Signup = () => {
         }
         return true;
     }
-    //Old V3 Warning Type Values
-    //TOR = 0
-    //FFW = 1
-    //SVR = 2
-    //WSW = 3
-    //TSW = 4
-    //DFA = 5
-    //FRZ = 6
-
-    const warnings = (warn) => {
-        switch(warn)
-        {
-            case 'tor':
-                if(torStatus) 
-                {
-                    schemas.postBody.addresses[0].thundercall.warningTypes.push(0);
-                }
-                break;
-            case 'severe':
-                if(severeStatus) 
-                {
-                    schemas.postBody.addresses[0].thundercall.warningTypes.push(2);
-                }
-                break;
-            case 'winterstorm':
-                if(winStatus) 
-                {
-                    schemas.postBody.addresses[0].thundercall.warningTypes.push(3);
-                }
-                break;
-            case 'ff':
-                if(flashStatus) 
-                {
-                    schemas.postBody.addresses[0].thundercall.warningTypes.push(1);
-                }
-                break;
-            default: 
-                break;                               
-        }
-    }
-
         return (
             <>
             <img src={process.env.REACT_APP_HEADER} className="img-fluid" alt="..."/>
@@ -420,8 +430,8 @@ const Signup = () => {
                         </Row>
                             )}
                             <div className="text-center">
-                                <Button className={isLoading.buttonClasses} variant="primary" type="button" onClick={onSubmit}>
-                                <Spinner as="span" animation="border" size="sm" role="status" aria-hidden="true" style={{display:isLoading.spinnerDisplay}}>
+                                <Button className={buttonClasses} variant="primary" type="button" onClick={onSubmit} disabled={submitDisabled}>
+                                <Spinner as="span" animation="border" size="sm" role="status" aria-hidden="true" style={{display:spinnerDisplay}}>
                                 </Spinner>
                                 Submit</Button>
                         </div>
